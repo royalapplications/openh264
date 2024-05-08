@@ -2,7 +2,7 @@ name: Build
 on:
   push:
     tags:
-      - '3.*.*'
+      - '2.*.*'
     paths-ignore:
       - '.github/workflows/x-*.yml'
   workflow_dispatch: # manually-triggered runs
