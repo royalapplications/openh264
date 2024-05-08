@@ -27,6 +27,8 @@ fi
 BUILD_DIR="${BUILD_ROOT_DIR}/v${OPENH264_VERSION}"
 
 if [[ ! -d "${BUILD_DIR}" ]]; then
+  echo "Unpacking v${OPENH264_VERSION}.tar.gz to ${BUILD_DIR}"
+
   mkdir -p "${BUILD_DIR}"
   tar xzf "${BUILD_ROOT_DIR}/v${OPENH264_VERSION}.tar.gz" -C "${BUILD_DIR}" --strip-components=1
 fi
@@ -50,20 +52,50 @@ build() {
 
   mkdir "${build_target_dir}"
 
+  local cflags="-Wall -fPIC -MMD -MP -arch ${arch}"
+  local ldflags="-stdlib=libc++ -arch ${arch}"
+
+  if [ "$os" = "darwin" ]; then
+    local sdk_root=$(xcrun --sdk macosx --show-sdk-path)
+
+    cflags="${cflags} -isysroot ${sdk_root} -mmacosx-version-min=${MACOS_VERSION_MIN}"
+    ldflags="${ldflags} -isysroot ${sdk_root} -mmacosx-version-min=${MACOS_VERSION_MIN}"
+  elif [ "$os" = "ios" ]; then
+    local sdk_root=$(xcrun --sdk iphoneos --show-sdk-path)
+
+    cflags="${cflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -DAPPLE_IOS -fembed-bitcode"
+    ldflags="${ldflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN}"
+  elif [ "$os" = "iossimulator" ]; then
+    os=""
+    local sdk_root=$(xcrun --sdk iphonesimulator --show-sdk-path)
+
+    cflags="${cflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -DAPPLE_IOS -fembed-bitcode"
+    ldflags="${ldflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN}"
+  fi
+
   echo "Cleaning"
   make clean -C "${BUILD_DIR}"
 
   echo "Making Openh264 for ${os} ${arch}"
-  make CFLAGS="-arch ${arch}" LDFLAGS="-arch ${arch}" -C "${BUILD_DIR}" OS="${os}" ARCH="${arch}"
+  make -C "${BUILD_DIR}" OS="${os}" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
 
-  make DESTDIR="${build_target_dir}" PREFIX="" install -C "${BUILD_DIR}"
+  make install -C "${BUILD_DIR}" DESTDIR="${build_target_dir}" PREFIX="" OS="${os}" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
 }
 
 TARGET_DIR_MACOS_ARM64="${TARGET_DIR}/macos-arm64"
 TARGET_DIR_MACOS_X86="${TARGET_DIR}/macos-x86_64"
+TARGET_DIR_IOS_ARM64="${TARGET_DIR}/ios-arm64"
+TARGET_DIR_IOS_SIMULATOR_ARM64="${TARGET_DIR}/iossimulator-arm64"
+TARGET_DIR_IOS_SIMULATOR_X86="${TARGET_DIR}/iossimulator-x86_64"
 
 build "darwin" "arm64" "${TARGET_DIR_MACOS_ARM64}"
 build "darwin" "x86_64" "${TARGET_DIR_MACOS_X86}"
+build "ios" "arm64" "${TARGET_DIR_IOS_ARM64}"
+
+# TODO: This one is actually compiling for iOS, not iOS Simulator
+build "iossimulator" "arm64" "${TARGET_DIR_IOS_SIMULATOR_ARM64}"
+
+build "iossimulator" "x86_64" "${TARGET_DIR_IOS_SIMULATOR_X86}"
 
 
 
