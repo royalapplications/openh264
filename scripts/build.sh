@@ -55,31 +55,35 @@ build() {
   local cflags="-Wall -fPIC -MMD -MP -arch ${arch}"
   local ldflags="-stdlib=libc++ -arch ${arch}"
 
+  local os_name=""
+
   if [ "$os" = "darwin" ]; then
+    os_name="macOS"
     local sdk_root=$(xcrun --sdk macosx --show-sdk-path)
 
     cflags="${cflags} -isysroot ${sdk_root} -mmacosx-version-min=${MACOS_VERSION_MIN}"
     ldflags="${ldflags} -isysroot ${sdk_root} -mmacosx-version-min=${MACOS_VERSION_MIN}"
   elif [ "$os" = "ios" ]; then
+    os_name="iOS"
     local sdk_root=$(xcrun --sdk iphoneos --show-sdk-path)
 
-    cflags="${cflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -DAPPLE_IOS -fembed-bitcode"
-    ldflags="${ldflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN}"
+    cflags="${cflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -target ${arch}-apple-ios"
+    ldflags="${ldflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -target ${arch}-apple-ios"
   elif [ "$os" = "iossimulator" ]; then
-    os=""
+    os_name="iOS Simulator"
     local sdk_root=$(xcrun --sdk iphonesimulator --show-sdk-path)
 
-    cflags="${cflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -DAPPLE_IOS -fembed-bitcode"
-    ldflags="${ldflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN}"
+    cflags="${cflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN} -target ${arch}-apple-ios-simulator"
+    ldflags="${ldflags} -isysroot ${sdk_root} -miphoneos-version-min=${IOS_VERSION_MIN}  -target ${arch}-apple-ios-simulator"
   fi
 
   echo "Cleaning"
   make clean -C "${BUILD_DIR}"
 
-  echo "Making Openh264 for ${os} ${arch}"
-  make -C "${BUILD_DIR}" OS="${os}" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
+  echo "Making Openh264 for ${os_name} ${arch}"
+  make -C "${BUILD_DIR}" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
 
-  make install -C "${BUILD_DIR}" DESTDIR="${build_target_dir}" PREFIX="" OS="${os}" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
+  make install -C "${BUILD_DIR}" DESTDIR="${build_target_dir}" PREFIX="" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
 }
 
 TARGET_DIR_MACOS_ARM64="${TARGET_DIR}/macos-arm64"
@@ -91,12 +95,10 @@ TARGET_DIR_IOS_SIMULATOR_X86="${TARGET_DIR}/iossimulator-x86_64"
 build "darwin" "arm64" "${TARGET_DIR_MACOS_ARM64}"
 build "darwin" "x86_64" "${TARGET_DIR_MACOS_X86}"
 build "ios" "arm64" "${TARGET_DIR_IOS_ARM64}"
-
-# TODO: This one is actually compiling for iOS, not iOS Simulator
 build "iossimulator" "arm64" "${TARGET_DIR_IOS_SIMULATOR_ARM64}"
-
 build "iossimulator" "x86_64" "${TARGET_DIR_IOS_SIMULATOR_X86}"
 
+# TODO: install_name_tool -id @rpath/libopenh264.2.4.1.dylib /Path/To/libopenh264.2.4.1.dylib
 
 
 # THREAD_COUNT=$(sysctl hw.ncpu | awk '{print $2}')
