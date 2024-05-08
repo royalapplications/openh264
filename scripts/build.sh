@@ -95,6 +95,9 @@ build() {
 
   echo "Removing all dylibs"
   find "${build_target_dir}/lib" -iname '*.dylib' -delete
+
+  echo "Removing pkgconfig dir"
+  rm -fr "${build_target_dir}/lib/pkgconfig"
 }
 
 make_universal_lib() {
@@ -117,11 +120,11 @@ make_universal_lib() {
     -output "${target_dir}/${file_name}"
 }
 
-TARGET_DIR_MACOS_ARM64="${TARGET_DIR}/macos-arm64"
-TARGET_DIR_MACOS_X86="${TARGET_DIR}/macos-x86_64"
-TARGET_DIR_IOS_ARM64="${TARGET_DIR}/ios-arm64"
-TARGET_DIR_IOS_SIMULATOR_ARM64="${TARGET_DIR}/iossimulator-arm64"
-TARGET_DIR_IOS_SIMULATOR_X86="${TARGET_DIR}/iossimulator-x86_64"
+TARGET_DIR_MACOS_ARM64="${TARGET_DIR}/macosx-arm64"
+TARGET_DIR_MACOS_X86="${TARGET_DIR}/macosx-x86_64"
+TARGET_DIR_IOS_ARM64="${TARGET_DIR}/iphoneos"
+TARGET_DIR_IOS_SIMULATOR_ARM64="${TARGET_DIR}/iphonesimulator-arm64"
+TARGET_DIR_IOS_SIMULATOR_X86="${TARGET_DIR}/iphonesimulator-x86_64"
 
 build "darwin" "arm64" "${TARGET_DIR_MACOS_ARM64}"
 build "darwin" "x86_64" "${TARGET_DIR_MACOS_X86}"
@@ -129,8 +132,8 @@ build "ios" "arm64" "${TARGET_DIR_IOS_ARM64}"
 build "iossimulator" "arm64" "${TARGET_DIR_IOS_SIMULATOR_ARM64}"
 build "iossimulator" "x86_64" "${TARGET_DIR_IOS_SIMULATOR_X86}"
 
-TARGET_DIR_MACOS_UNIVERSAL="${TARGET_DIR}/macos-arm64_x86_64"
-TARGET_DIR_IOS_SIMULATOR_UNIVERSAL="${TARGET_DIR}/iossimulator-arm64_x86_64"
+TARGET_DIR_MACOS_UNIVERSAL="${TARGET_DIR}/macosx"
+TARGET_DIR_IOS_SIMULATOR_UNIVERSAL="${TARGET_DIR}/iphonesimulator"
 
 make_universal_lib \
   "libopenh264.a" \
@@ -152,28 +155,17 @@ cp -r \
   "${TARGET_DIR_IOS_SIMULATOR_ARM64}/include" \
   "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/include"
 
-TARGET_DIR_APPLE_UNIVERSAL="${TARGET_DIR}/apple-universal"
-
-if [[ -d "${TARGET_DIR_APPLE_UNIVERSAL}" ]]; then
-  rm -rf "${TARGET_DIR_APPLE_UNIVERSAL}"
-fi
-
-mkdir "${TARGET_DIR_APPLE_UNIVERSAL}"
-
-echo "Creating Apple-Universal XCFramework at ${TARGET_DIR_APPLE_UNIVERSAL}/Openh264.xcframework"
+echo "Creating Apple-Universal XCFramework at ${TARGET_DIR}/Openh264.xcframework"
 
 xcodebuild -create-xcframework \
   -library "${TARGET_DIR_MACOS_UNIVERSAL}/lib/libopenh264.a" \
-  -headers "${TARGET_DIR_MACOS_UNIVERSAL}/include" \
   -library "${TARGET_DIR_IOS_ARM64}/lib/libopenh264.a" \
-  -headers "${TARGET_DIR_IOS_ARM64}/include" \
   -library "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/lib/libopenh264.a" \
-  -headers "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/include" \
-  -output "${TARGET_DIR_APPLE_UNIVERSAL}/Openh264.xcframework"
+  -output "${TARGET_DIR}/Openh264.xcframework"
 
 echo "Codesigning XCFramework"
 
 codesign \
     --force --deep --strict \
     --sign "${CODESIGN_ID}" \
-    "${TARGET_DIR_APPLE_UNIVERSAL}/Openh264.xcframework"
+    "${TARGET_DIR}/Openh264.xcframework"
