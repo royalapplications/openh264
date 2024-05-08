@@ -33,7 +33,7 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
   tar xzf "${BUILD_ROOT_DIR}/v${OPENH264_VERSION}.tar.gz" -C "${BUILD_DIR}" --strip-components=1
 fi
 
-TARGET_DIR="${BUILD_ROOT_DIR}/v${OPENH264_VERSION}_build"
+TARGET_DIR="${BUILD_ROOT_DIR}/openh264-${OPENH264_VERSION}"
 
 if [[ -d "${TARGET_DIR}" ]]; then
   rm -rf "${TARGET_DIR}"
