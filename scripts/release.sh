@@ -10,7 +10,7 @@ if [[ -z $OPENH264_VERSION ]]; then
   exit 1
 fi
 
-BUILD_DIR="${SCRIPT_PATH}/../build/openh264-${OPENH264_VERSION}/build"
+BUILD_DIR="${SCRIPT_PATH}/../build/openh264-${OPENH264_VERSION}"
 echo "Build Path: ${BUILD_DIR}"
 
 if [[ ! -d "${BUILD_DIR}" ]]; then
