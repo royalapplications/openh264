@@ -40,6 +40,9 @@ jobs:
         key: "openh264-src-${{ env.OPENH264_VERSION }}"
         path: |
           build/openh264-${{ env.OPENH264_VERSION }}.tar.gz
+    
+    - name: install nasm
+      run: "brew install nasm"
 
     - name: build
       run: scripts/build.sh
