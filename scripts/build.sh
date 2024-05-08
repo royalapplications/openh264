@@ -81,9 +81,40 @@ build() {
   make clean -C "${BUILD_DIR}"
 
   echo "Making Openh264 for ${os_name} ${arch}"
-  make -C "${BUILD_DIR}" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
+  make -C "${BUILD_DIR}" \
+    ARCH="${arch}" \
+    CFLAGS="${cflags}" \
+    LDFLAGS="${ldflags}"
 
-  make install -C "${BUILD_DIR}" DESTDIR="${build_target_dir}" PREFIX="" ARCH="${arch}" CFLAGS="${cflags}" LDFLAGS="${ldflags}"
+  make install -C "${BUILD_DIR}" \
+    DESTDIR="${build_target_dir}" \
+    PREFIX="" \
+    ARCH="${arch}" \
+    CFLAGS="${cflags}" \
+    LDFLAGS="${ldflags}"
+
+  echo "Removing all dylibs"
+  find "${build_target_dir}/lib" -iname '*.dylib' -delete
+}
+
+make_universal_lib() {
+  local file_name="$1"
+  local target_dir="$2"
+  local source_dir_1="$3"
+  local source_dir_2="$4"
+
+  if [[ -d "${target_dir}" ]]; then
+    rm -rf "${target_dir}"
+  fi
+
+  mkdir -p "${target_dir}"
+
+  echo "Making universal binary at ${target_dir}/${file_name} out of ${source_dir_1}/${file_name} and ${source_dir_2}/${file_name}"
+
+  lipo -create \
+    "${source_dir_1}/${file_name}" \
+    "${source_dir_2}/${file_name}" \
+    -output "${target_dir}/${file_name}"
 }
 
 TARGET_DIR_MACOS_ARM64="${TARGET_DIR}/macos-arm64"
@@ -98,100 +129,51 @@ build "ios" "arm64" "${TARGET_DIR_IOS_ARM64}"
 build "iossimulator" "arm64" "${TARGET_DIR_IOS_SIMULATOR_ARM64}"
 build "iossimulator" "x86_64" "${TARGET_DIR_IOS_SIMULATOR_X86}"
 
-# TODO: install_name_tool -id @rpath/libopenh264.2.4.1.dylib /Path/To/libopenh264.2.4.1.dylib
+TARGET_DIR_MACOS_UNIVERSAL="${TARGET_DIR}/macos-arm64_x86_64"
+TARGET_DIR_IOS_SIMULATOR_UNIVERSAL="${TARGET_DIR}/iossimulator-arm64_x86_64"
 
+make_universal_lib \
+  "libopenh264.a" \
+  "${TARGET_DIR_MACOS_UNIVERSAL}/lib" \
+  "${TARGET_DIR_MACOS_ARM64}/lib" \
+  "${TARGET_DIR_MACOS_X86}/lib"
 
-# THREAD_COUNT=$(sysctl hw.ncpu | awk '{print $2}')
+cp -r \
+  "${TARGET_DIR_MACOS_ARM64}/include" \
+  "${TARGET_DIR_MACOS_UNIVERSAL}/include"
 
-# build_sim_libs()
-# {
-#   local ARCH=$1
-#   if [[ ! -d "${BUILD_DIR}/build/iphonesimulator-${ARCH}" ]]; then
-#     pushd "${BUILD_DIR}"
-#     ./Configure --openssldir="${BUILD_DIR}/build/ssl" no-asm no-shared no-apps no-docs no-module no-dso no-hw no-engine iossimulator-xcrun CFLAGS="-arch $ARCH -mios-simulator-version-min=${IOS_VERSION_MIN}"
-#     make clean
-#     make -j$THREAD_COUNT
-#     mkdir "${BUILD_DIR}/build/iphonesimulator-${ARCH}"
-#     cp libssl.a "${BUILD_DIR}/build/iphonesimulator-${ARCH}/"
-#     cp libcrypto.a "${BUILD_DIR}/build/iphonesimulator-${ARCH}/"
-#     make clean
-# 	popd
-#   fi
-# }
+make_universal_lib \
+  "libopenh264.a" \
+  "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/lib" \
+  "${TARGET_DIR_IOS_SIMULATOR_ARM64}/lib" \
+  "${TARGET_DIR_IOS_SIMULATOR_X86}/lib"
 
-# HOST_ARC="$( uname -m )"
-# if [ "$HOST_ARC" = "arm64" ]; then
-#   FOREIGN_ARC="x86_64"
-# else
-#   FOREIGN_ARC="arm64"
-# fi
-# NATIVE_BUILD_FLAGS="-mmacosx-version-min=${MACOS_VERSION_MIN}"
+cp -r \
+  "${TARGET_DIR_IOS_SIMULATOR_ARM64}/include" \
+  "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/include"
 
-# if [[ ! -d "${BUILD_DIR}/build/lib" ]]; then
-#   pushd "${BUILD_DIR}"
-#   ./Configure --prefix="${BUILD_DIR}/build" --openssldir="${BUILD_DIR}/build/ssl" no-shared no-apps no-docs no-module darwin64-$HOST_ARC-cc CFLAGS="${NATIVE_BUILD_FLAGS}"
-#   make clean
-#   make -j$THREAD_COUNT
-#   make -j$THREAD_COUNT install_sw # skip man pages, see https://github.com/openssl/openssl/issues/8170#issuecomment-461122307
-#   make clean
-#   popd
-# fi
+TARGET_DIR_APPLE_UNIVERSAL="${TARGET_DIR}/apple-universal"
 
-# if [[ ! -d "${BUILD_DIR}/build/macosx" ]]; then
-#   pushd "${BUILD_DIR}"
-#   ./Configure --openssldir="${BUILD_DIR}/build/ssl" no-shared no-apps no-docs no-module darwin64-$FOREIGN_ARC-cc CFLAGS="-arch ${FOREIGN_ARC} ${NATIVE_BUILD_FLAGS}"
-#   make clean
-#   make -j$THREAD_COUNT
-#   mkdir "${BUILD_DIR}/build/macosx"
-#   mkdir "${BUILD_DIR}/build/macosx/include" 
-#   mkdir "${BUILD_DIR}/build/macosx/lib"
-#   cp -r "${BUILD_DIR}/build/include/openssl" "${BUILD_DIR}/build/macosx/include/OpenSSL"
-#   lipo -create "${BUILD_DIR}/build/lib/libssl.a"    libssl.a    -output "${BUILD_DIR}/build/macosx/lib/libssl.a"
-#   lipo -create "${BUILD_DIR}/build/lib/libcrypto.a" libcrypto.a -output "${BUILD_DIR}/build/macosx/lib/libcrypto.a"
-#   xcrun libtool -static -o "${BUILD_DIR}/build/macosx/lib/libOpenSSL.a" "${BUILD_DIR}/build/macosx/lib/libcrypto.a" "${BUILD_DIR}/build/macosx/lib/libssl.a"
-#   make clean
-#   popd
-# fi
+if [[ -d "${TARGET_DIR_APPLE_UNIVERSAL}" ]]; then
+  rm -rf "${TARGET_DIR_APPLE_UNIVERSAL}"
+fi
 
-# if [[ ! -d "${BUILD_DIR}/build/iphonesimulator" ]]; then
-#   build_sim_libs arm64
-#   build_sim_libs x86_64
-#   mkdir "${BUILD_DIR}/build/iphonesimulator"
-#   mkdir "${BUILD_DIR}/build/iphonesimulator/include" 
-#   mkdir "${BUILD_DIR}/build/iphonesimulator/lib"
-#   cp -r "${BUILD_DIR}/build/include/openssl" "${BUILD_DIR}/build/iphonesimulator/include/OpenSSL"
-#   lipo -create "${BUILD_DIR}/build/iphonesimulator-x86_64/libssl.a"    "${BUILD_DIR}/build/iphonesimulator-arm64/libssl.a"    -output "${BUILD_DIR}/build/iphonesimulator/lib/libssl.a"
-#   lipo -create "${BUILD_DIR}/build/iphonesimulator-x86_64/libcrypto.a" "${BUILD_DIR}/build/iphonesimulator-arm64/libcrypto.a" -output "${BUILD_DIR}/build/iphonesimulator/lib/libcrypto.a"
-#   xcrun libtool -static -o "${BUILD_DIR}/build/iphonesimulator/lib/libOpenSSL.a" "${BUILD_DIR}/build/iphonesimulator/lib/libcrypto.a" "${BUILD_DIR}/build/iphonesimulator/lib/libssl.a"
-#   rm -rf "${BUILD_DIR}/build/iphonesimulator-arm64"
-#   rm -rf "${BUILD_DIR}/build/iphonesimulator-x86_64"
-# fi
+mkdir "${TARGET_DIR_APPLE_UNIVERSAL}"
 
-# if [[ ! -d "${BUILD_DIR}/build/iphoneos" ]]; then
-#   pushd "${BUILD_DIR}"
-#   ./Configure --openssldir="${BUILD_DIR}/build/ssl" no-asm no-shared no-apps no-docs no-module no-dso no-hw no-engine ios64-xcrun -mios-version-min=${IOS_VERSION_MIN}
-#   make clean
-#   make -j$THREAD_COUNT
-#   mkdir "${BUILD_DIR}/build/iphoneos" 
-#   mkdir "${BUILD_DIR}/build/iphoneos/include" 
-#   mkdir "${BUILD_DIR}/build/iphoneos/lib"
-#   cp -r "${BUILD_DIR}/build/include/openssl" "${BUILD_DIR}/build/iphoneos/include/OpenSSL"
-#   cp libssl.a "${BUILD_DIR}/build/iphoneos/lib/"
-#   cp libcrypto.a "${BUILD_DIR}/build/iphoneos/lib/"
-#   xcrun libtool -static -o "${BUILD_DIR}/build/iphoneos/lib/libOpenSSL.a" "${BUILD_DIR}/build/iphoneos/lib/libcrypto.a" "${BUILD_DIR}/build/iphoneos/lib/libssl.a"
-#   make clean
-#   popd
-# fi
+echo "Creating Apple-Universal XCFramework at ${TARGET_DIR_APPLE_UNIVERSAL}/Openh264.xcframework"
 
-# if [[ ! -d "${BUILD_DIR}/build/OpenSSL.xcframework" ]]; then
-#   xcodebuild -create-xcframework \
-#     -library "${BUILD_DIR}/build/macosx/lib/libOpenSSL.a" \
-#     -library "${BUILD_DIR}/build/iphonesimulator/lib/libOpenSSL.a" \
-#     -library "${BUILD_DIR}/build/iphoneos/lib/libOpenSSL.a" \
-#     -output "${BUILD_DIR}/build/OpenSSL.xcframework"
+xcodebuild -create-xcframework \
+  -library "${TARGET_DIR_MACOS_UNIVERSAL}/lib/libopenh264.a" \
+  -headers "${TARGET_DIR_MACOS_UNIVERSAL}/include" \
+  -library "${TARGET_DIR_IOS_ARM64}/lib/libopenh264.a" \
+  -headers "${TARGET_DIR_IOS_ARM64}/include" \
+  -library "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/lib/libopenh264.a" \
+  -headers "${TARGET_DIR_IOS_SIMULATOR_UNIVERSAL}/include" \
+  -output "${TARGET_DIR_APPLE_UNIVERSAL}/Openh264.xcframework"
 
-#   codesign \
-#     --force --deep --strict \
-#     --sign "${CODESIGN_ID}" \
-#     "${BUILD_DIR}/build/OpenSSL.xcframework"
-# fi
+echo "Codesigning XCFramework"
+
+codesign \
+    --force --deep --strict \
+    --sign "${CODESIGN_ID}" \
+    "${TARGET_DIR_APPLE_UNIVERSAL}/Openh264.xcframework"
