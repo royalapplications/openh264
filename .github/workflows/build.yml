@@ -62,9 +62,9 @@ jobs:
         retention-days: 5
         if-no-files-found: "error"
         path: |
-          build/openh264-${{ env.OPENH264_VERSION }}/build/iphoneos/**
-          build/openh264-${{ env.OPENH264_VERSION }}/build/iphonesimulator/**
-          build/openh264-${{ env.OPENH264_VERSION }}/build/macosx/**
+          build/openh264-${{ env.OPENH264_VERSION }}/iphoneos/**
+          build/openh264-${{ env.OPENH264_VERSION }}/iphonesimulator/**
+          build/openh264-${{ env.OPENH264_VERSION }}/macosx/**
 
     - name: publish xcframework
       uses: actions/upload-artifact@v4
@@ -73,7 +73,7 @@ jobs:
         retention-days: 5
         if-no-files-found: "error"
         path: |
-          build/openh264-${{ env.OPENH264_VERSION }}/build/Openh264.xcframework
+          build/openh264-${{ env.OPENH264_VERSION }}/Openh264.xcframework
 
     - name: pack release artifacts
       if: "success() && env.PUBLISH_RELEASE == '1'"
@@ -89,5 +89,5 @@ jobs:
         generate_release_notes: false
         fail_on_unmatched_files: true
         files: |
-          build/openh264-${{ env.OPENH264_VERSION }}/build/openh264.tar.gz
-          build/openh264-${{ env.OPENH264_VERSION }}/build/Openh264.xcframework.tar.gz
+          build/openh264-${{ env.OPENH264_VERSION }}/openh264.tar.gz
+          build/openh264-${{ env.OPENH264_VERSION }}/Openh264.xcframework.tar.gz
