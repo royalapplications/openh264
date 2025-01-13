@@ -2,7 +2,7 @@
 
 set -e
 
-OPENH264_VERSION_STABLE="2.4.1" # https://github.com/cisco/openh264/releases
+OPENH264_VERSION_STABLE="2.5.0" # https://github.com/cisco/openh264/releases
 IOS_VERSION_MIN="13.4"
 MACOS_VERSION_MIN="11.0"
 CODESIGN_ID="-"
